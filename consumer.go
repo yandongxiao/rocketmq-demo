@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/apache/rocketmq-client-go/v2"
 	"github.com/apache/rocketmq-client-go/v2/consumer"
@@ -15,13 +16,24 @@ func main() {
 	c, err := rocketmq.NewPushConsumer(
 		consumer.WithNameServer([]string{"127.0.0.1:9876"}),
 		consumer.WithConsumerModel(consumer.Clustering),
-		consumer.WithGroupName("GID_XXXXXX"),
+		consumer.WithConsumeMessageBatchMaxSize(1),
+		// consumer.WithPullInterval(10*time.Second),
+		// consumer.WithPullBatchSize(1000),
+		// consumer.WithConsumeGoroutineNums(5),
+		consumer.WithGroupName("GID_ZZZ"),
+		consumer.WithMaxReconsumeTimes(1),
+		consumer.WithConsumeTimeout(3600*time.Second),
 	)
-	err = c.Subscribe("test", consumer.MessageSelector{}, func(ctx context.Context,
+	err = c.Subscribe("test2", consumer.MessageSelector{}, func(ctx context.Context,
 		msgs ...*primitive.MessageExt) (consumer.ConsumeResult, error) {
-		for i := range msgs {
-			fmt.Printf("subscribe callback: %v \n", string(msgs[i].Body))
-		}
+		concurrentCtx, _ := primitive.GetConcurrentlyCtx(ctx)
+		concurrentCtx.DelayLevelWhenNextConsume = 1
+		// for i := range msgs {
+		// 	fmt.Printf("time: %v, subscribe callback: %v \n", time.Now(), string(msgs[i].Body))
+		// }
+		fmt.Println("begin: len(msgs)", len(msgs))
+		time.Sleep(time.Second * 3000)
+		fmt.Println("end: len(msgs)", len(msgs))
 
 		return consumer.ConsumeSuccess, nil
 	})
